@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS CTF | Global Leaderboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'sans-serif'], mono: ['Fira Code', 'monospace'] },
+                    colors: { nexus: { black: '#0d0d0d', dark: '#151515', grey: '#2a2a2a', lightGrey: '#8e8e8e', white: '#f5f5f5', red: '#D2042D', purple: '#8A2BE2' } }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0d0d0d; color: #f5f5f5; }
+        .gradient-text { background: linear-gradient(135deg, #8A2BE2, #D2042D); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-link { position: relative; }
+        .nav-link::after { content: ''; position: absolute; width: 0; height: 2px; bottom: -4px; left: 0; background-color: #D2042D; transition: width 0.3s ease; }
+        .nav-link:hover::after { width: 100%; }
+        
+        .content-box { background: #151515; border: 1px solid #2a2a2a; border-radius: 12px; overflow: hidden; }
+        
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background: #0a0a0a; color: #8e8e8e; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; padding: 1.25rem 1.5rem; font-weight: 800; border-bottom: 1px solid #2a2a2a; }
+        td { padding: 1.25rem 1.5rem; border-bottom: 1px solid #2a2a2a; color: #f5f5f5; font-weight: 500; }
+        tr.rank-row { transition: background 0.2s; }
+        tr.rank-row:hover { background: #1a1a1a; cursor: pointer; }
+        
+        .members-row td { background: #0a0a0a; border-bottom: 1px solid #2a2a2a; padding: 1.5rem; }
+        
+        .rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #2a2a2a; font-weight: bold; font-size: 0.8rem; }
+        .rank-1 .rank-badge { background: linear-gradient(135deg, #FFD700, #FDB931); color: black; }
+        .rank-2 .rank-badge { background: linear-gradient(135deg, #C0C0C0, #E0E0E0); color: black; }
+        .rank-3 .rank-badge { background: linear-gradient(135deg, #CD7F32, #E29B65); color: black; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation Bar -->
+    <nav class="bg-nexus-dark/80 backdrop-blur-md border-b border-nexus-grey p-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-8">
+                <span class="font-extrabold text-2xl tracking-tighter gradient-text cursor-default">NEXUS_CTF</span>
+                <div class="hidden md:flex gap-6">
+                    <a href="/dashboard.html" class="nav-link text-nexus-lightGrey hover:text-nexus-white font-semibold text-sm tracking-widest uppercase transition">Dashboard</a>
+                    <a href="/leaderboard.html" class="nav-link text-nexus-white font-semibold text-sm tracking-widest uppercase transition">Leaderboard</a>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 text-xs font-mono text-nexus-lightGrey">
+                <span class="animate-pulse w-2 h-2 rounded-full bg-nexus-red inline-block mr-1"></span> LIVE FEED
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto p-8 pt-12">
+        <div class="mb-10 text-center">
+            <h1 class="text-4xl font-extrabold mb-2">Global Rankings</h1>
+            <p class="text-nexus-lightGrey font-medium">Top teams sorted by flags acquired and operational speed.</p>
+        </div>
+
+        <div class="content-box">
+            <div class="overflow-x-auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="10%">Rank</th>
+                            <th width="35%">Team Alias</th>
+                            <th width="20%">Nodes Hacked</th>
+                            <th width="25%">Total Duration</th>
+                            <th width="10%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <tr><td colspan="5" class="text-center py-12 text-nexus-lightGrey font-mono">Fetching telemetry data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hrs = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        async function init() {
+            try {
+                const res = await fetch('/api/leaderboard');
+                const data = await res.json();
+                
+                const tbody = document.getElementById('leaderboardBody');
+                tbody.innerHTML = '';
+                
+                data.leaderboard.forEach((team, index) => {
+                    const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                    
+                    // Main Row
+                    const tr = document.createElement('tr');
+                    tr.className = `rank-row ${rankClass}`;
+                    tr.onclick = () => toggleMembers(team.id);
+                    tr.innerHTML = `
+                        <td><div class="rank-badge">${index + 1}</div></td>
+                        <td class="font-bold text-lg">${team.name}</td>
+                        <td>
+                            <span class="text-nexus-red font-bold text-xl">${team.score}</span> <span class="text-nexus-lightGrey text-sm">/ 4</span>
+                        </td>
+                        <td class="font-mono text-nexus-lightGrey">${formatTime(team.total_time_ms)}</td>
+                        <td class="text-right text-nexus-purple">
+                            <svg id="icon-${team.id}" class="w-5 h-5 inline-block transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    // Details Row (Hidden by default)
+                    const mTr = document.createElement('tr');
+                    mTr.id = `members-${team.id}`;
+                    mTr.className = 'members-row hidden';
+                    
+                    const memberList = team.members.map(m => `
+                        <div class="bg-[#111] border border-[#222] rounded p-3 flex justify-between items-center">
+                            <span class="font-medium">${m.name}</span>
+                            <span class="font-mono text-xs text-nexus-lightGrey uppercase bg-[#000] px-2 py-1 rounded border border-[#333]">${m.usn}</span>
+                        </div>
+                    `).join('');
+                    
+                    mTr.innerHTML = `
+                        <td colspan="5">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                ${memberList}
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(mTr);
+                });
+                
+                if (data.leaderboard.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-12 text-nexus-lightGrey font-mono">No telemetry data found.</td></tr>';
+                }
+
+            } catch (e) {
+                document.getElementById('leaderboardBody').innerHTML = '<tr><td colspan="5" class="text-center py-12 text-nexus-red font-mono">SYSTEM FAILURE: Cannot retrieve rankings.</td></tr>';
+            }
+        }
+
+        window.toggleMembers = function(id) {
+            const el = document.getElementById(`members-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                el.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        init();
+        setInterval(init, 10000); // Live refresh
+    </script>
+</body>
+</html>

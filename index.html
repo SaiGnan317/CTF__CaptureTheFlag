@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS CTF | Registration</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    },
+                    colors: {
+                        nexus: {
+                            black: '#0d0d0d',
+                            dark: '#151515',
+                            grey: '#2a2a2a',
+                            lightGrey: '#8e8e8e',
+                            white: '#f5f5f5',
+                            red: '#D2042D',
+                            purple: '#8A2BE2'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0d0d0d; color: #f5f5f5; }
+        .glass-panel { background: rgba(21, 21, 21, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(138, 43, 226, 0.3); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); }
+        .input-field { background: rgba(42, 42, 42, 0.5); border: 1px solid #2a2a2a; color: #f5f5f5; transition: all 0.3s ease; }
+        .input-field:focus { border-color: #8A2BE2; box-shadow: 0 0 10px rgba(138, 43, 226, 0.2); outline: none; }
+        .btn-gradient { background: linear-gradient(135deg, #8A2BE2, #D2042D); color: white; transition: all 0.3s ease; }
+        .btn-gradient:hover { box-shadow: 0 0 20px rgba(210, 4, 45, 0.5); transform: translateY(-1px); }
+        .gradient-text { background: linear-gradient(135deg, #8A2BE2, #D2042D); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] relative">
+    <div class="absolute inset-0 bg-nexus-black/80 z-0"></div>
+    
+    <div class="glass-panel max-w-2xl w-full p-10 rounded-2xl z-10 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-nexus-purple to-nexus-red"></div>
+        
+        <h1 class="text-5xl font-extrabold mb-2 text-center gradient-text tracking-tight">NEXUS CTF</h1>
+        <p class="text-center text-nexus-lightGrey mb-8 font-medium">Initialize team parameters to gain network access.</p>
+        
+        <form id="regForm" class="space-y-6">
+            <div>
+                <label class="block mb-2 text-sm font-semibold text-nexus-lightGrey uppercase tracking-wider">Team Alias</label>
+                <input type="text" id="teamName" required placeholder="Enter unique team name..." class="input-field w-full px-4 py-3 rounded-lg font-mono text-sm">
+            </div>
+
+            <div id="membersContainer" class="space-y-4 pt-4 border-t border-nexus-grey">
+                <label class="block mb-2 text-sm font-semibold text-nexus-lightGrey uppercase tracking-wider flex justify-between">
+                    <span>Operators (Max 5)</span>
+                    <span id="memberCountDisplay">1/5</span>
+                </label>
+                <!-- Member 1 -->
+                <div class="member-entry grid grid-cols-2 gap-4">
+                    <input type="text" class="m-name input-field px-4 py-2 rounded-lg font-mono text-sm" required placeholder="Full Name">
+                    <input type="text" class="m-usn input-field px-4 py-2 rounded-lg font-mono text-sm uppercase" required placeholder="USN (e.g. 1RV...)">
+                </div>
+            </div>
+
+            <div class="flex justify-start items-center">
+                <button type="button" id="addMemberBtn" class="text-nexus-purple hover:text-nexus-red transition text-sm font-semibold flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Add Operator
+                </button>
+            </div>
+
+            <div id="errorBox" class="text-nexus-red bg-nexus-red/10 border border-nexus-red/20 rounded p-3 text-sm font-mono hidden"></div>
+
+            <button type="submit" class="w-full py-4 mt-6 font-bold text-lg rounded-xl btn-gradient tracking-widest uppercase">
+                Initialize Sequence
+            </button>
+        </form>
+        
+        <div class="mt-8 pt-6 border-t border-nexus-grey">
+            <p class="text-sm text-nexus-lightGrey mb-4 text-center font-medium">Already have a team token? Enter it below to join your squad.</p>
+            <form id="joinForm" class="flex gap-4">
+                <input type="text" id="joinToken" required placeholder="Paste Team Token..." class="input-field flex-grow px-4 py-3 rounded-lg font-mono text-sm">
+                <button type="submit" class="bg-nexus-grey hover:bg-nexus-lightGrey text-white transition px-6 py-3 rounded-lg font-bold tracking-widest uppercase text-sm">Join</button>
+            </form>
+            <div id="joinErrorBox" class="mt-4 text-nexus-red bg-nexus-red/10 border border-nexus-red/20 rounded p-3 text-sm font-mono hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        const membersContainer = document.getElementById('membersContainer');
+        const addMemberBtn = document.getElementById('addMemberBtn');
+        const regForm = document.getElementById('regForm');
+        const errorBox = document.getElementById('errorBox');
+        const memberCountDisplay = document.getElementById('memberCountDisplay');
+        let memberCount = 1;
+
+        addMemberBtn.addEventListener('click', () => {
+            if (memberCount >= 5) {
+                errorBox.textContent = "Maximum 5 operators allowed per team.";
+                errorBox.classList.remove('hidden');
+                return;
+            }
+            const div = document.createElement('div');
+            div.className = 'member-entry grid grid-cols-2 gap-4 mt-2';
+            div.innerHTML = `
+                <input type="text" class="m-name input-field px-4 py-2 rounded-lg font-mono text-sm" required placeholder="Full Name">
+                <input type="text" class="m-usn input-field px-4 py-2 rounded-lg font-mono text-sm uppercase" required placeholder="USN">
+            `;
+            membersContainer.appendChild(div);
+            memberCount++;
+            memberCountDisplay.textContent = `${memberCount}/5`;
+        });
+
+        regForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.classList.add('hidden');
+            
+            const teamName = document.getElementById('teamName').value;
+            const entries = document.querySelectorAll('.member-entry');
+            const members = Array.from(entries).map(entry => ({
+                name: entry.querySelector('.m-name').value,
+                usn: entry.querySelector('.m-usn').value
+            }));
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ teamName, members })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    document.cookie = `team_token=${data.token}; path=/; max-age=86400`;
+                    localStorage.setItem('team_token', data.token);
+                    window.location.href = '/dashboard.html';
+                } else {
+                    errorBox.textContent = data.error;
+                    errorBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorBox.textContent = 'Connection failed. Ensure server is running.';
+                errorBox.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('joinForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const token = document.getElementById('joinToken').value.trim();
+            const errBox = document.getElementById('joinErrorBox');
+            errBox.classList.add('hidden');
+            
+            try {
+                const res = await fetch('/api/me', {
+                    headers: { 'Authorization': token }
+                });
+                
+                if (res.ok) {
+                    document.cookie = `team_token=${token}; path=/; max-age=86400`;
+                    localStorage.setItem('team_token', token);
+                    window.location.href = '/dashboard.html';
+                } else {
+                    errBox.textContent = 'Invalid or expired team token.';
+                    errBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                errBox.textContent = 'Connection failed.';
+                errBox.classList.remove('hidden');
+            }
+        });
+        
+        if(document.cookie.includes('team_token') || localStorage.getItem('team_token')) {
+            window.location.href = '/dashboard.html';
+        }
+    </script>
+</body>
+</html>
