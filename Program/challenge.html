@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS CTF | Challenge Node</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'sans-serif'], mono: ['Fira Code', 'monospace'] },
+                    colors: { nexus: { black: '#0d0d0d', dark: '#151515', grey: '#2a2a2a', lightGrey: '#8e8e8e', white: '#f5f5f5', red: '#D2042D', purple: '#8A2BE2' } }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { 
+            background-color: #0d0d0d; color: #f5f5f5; 
+            /* ANTI-CHEAT CSS */
+            user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
+        }
+        input {
+            user-select: text; -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text;
+        }
+        .gradient-text { background: linear-gradient(135deg, #8A2BE2, #D2042D); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-link { position: relative; }
+        .nav-link::after { content: ''; position: absolute; width: 0; height: 2px; bottom: -4px; left: 0; background-color: #D2042D; transition: width 0.3s ease; }
+        .nav-link:hover::after { width: 100%; }
+        
+        .content-box { background: #151515; border: 1px solid #2a2a2a; border-radius: 12px; }
+        .terminal-box { background: #0a0a0a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 1.5rem; font-family: 'Fira Code', monospace; color: #a3a3a3; }
+        
+        .input-field { background: #0a0a0a; border: 1px solid #2a2a2a; color: #f5f5f5; transition: all 0.3s ease; }
+        .input-field:focus { border-color: #8A2BE2; box-shadow: 0 0 10px rgba(138, 43, 226, 0.2); outline: none; }
+        
+        .btn-primary { background: linear-gradient(135deg, #8A2BE2, #D2042D); color: white; transition: all 0.3s ease; }
+        .btn-primary:hover { box-shadow: 0 0 20px rgba(210, 4, 45, 0.4); transform: translateY(-1px); }
+        .btn-secondary { background: #2a2a2a; color: #f5f5f5; transition: all 0.2s; }
+        .btn-secondary:hover { background: #3a3a3a; }
+        
+        canvas { pointer-events: none; } /* Prevent right click save image */
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation Bar -->
+    <nav class="bg-nexus-dark/80 backdrop-blur-md border-b border-nexus-grey p-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-8">
+                <span class="font-extrabold text-2xl tracking-tighter gradient-text cursor-default">NEXUS_CTF</span>
+                <div class="hidden md:flex gap-6">
+                    <a href="/dashboard.html" class="nav-link text-nexus-lightGrey hover:text-nexus-white font-semibold text-sm tracking-widest uppercase transition">Dashboard</a>
+                    <a href="/leaderboard.html" class="nav-link text-nexus-lightGrey hover:text-nexus-white font-semibold text-sm tracking-widest uppercase transition">Leaderboard</a>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="resetChalBtn" class="hidden text-nexus-red border border-nexus-red/30 hover:bg-nexus-red hover:text-white px-4 py-2 rounded-lg text-xs font-bold transition">
+                    RESET TIMER
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto p-8 pt-12">
+        <div class="mb-6">
+            <a href="/dashboard.html" class="text-nexus-lightGrey hover:text-nexus-white flex items-center gap-2 text-sm font-semibold transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                BACK TO NODES
+            </a>
+        </div>
+
+        <div class="content-box p-10 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-nexus-purple to-nexus-red"></div>
+            
+            <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
+                <div>
+                    <h1 id="chalTitle" class="text-4xl font-extrabold mb-2">Loading Node...</h1>
+                    <span id="chalStatus" class="inline-block px-3 py-1 rounded text-xs font-bold tracking-widest bg-nexus-grey text-nexus-lightGrey">CONNECTING</span>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-nexus-lightGrey font-bold tracking-widest mb-1 uppercase">Elapsed Time</div>
+                    <div id="timerDisplay" class="text-3xl font-mono font-bold text-nexus-white">00:00:00</div>
+                    <div id="penaltyDisplay" class="text-xs font-mono font-bold text-nexus-red mt-1 hidden"></div>
+                </div>
+            </div>
+            
+            <div id="chalDesc" class="text-nexus-lightGrey text-lg mb-10 leading-relaxed font-medium"></div>
+
+            <div id="chalInteraction" class="mb-10 w-full overflow-hidden">
+                <!-- Custom interaction area based on challenge ID -->
+            </div>
+
+            <div class="bg-nexus-black p-8 rounded-xl border border-nexus-grey">
+                <h3 class="font-bold text-nexus-white mb-4 uppercase tracking-widest text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4 text-nexus-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    Flag Submission
+                </h3>
+                <form id="flagForm" class="flex flex-col md:flex-row gap-4">
+                    <input type="text" id="flagInput" required placeholder="FLAG{...}" class="input-field flex-grow px-4 py-3 rounded-lg font-mono">
+                    <button type="submit" class="btn-primary px-8 py-3 rounded-lg font-bold tracking-widest uppercase text-sm" id="submitBtn">Submit</button>
+                </form>
+                <div id="resultMsg" class="mt-4 font-mono font-bold hidden p-3 rounded text-sm"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- ANTI-CHEAT ENGINE ---
+        let penaltyTimeMs = 0;
+        let isSolved = false;
+        
+        function showAntiCheatWarn(msg) {
+            const box = document.createElement('div');
+            box.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-nexus-red text-white font-bold px-8 py-4 rounded-lg shadow-[0_0_40px_rgba(210,4,45,0.8)] z-[9999] border-2 border-white uppercase tracking-widest text-center';
+            box.innerHTML = `<span class="block text-2xl mb-1">&#9888; SECURITY ALERT</span>${msg}`;
+            document.body.appendChild(box);
+            setTimeout(() => {
+                box.style.opacity = '0';
+                box.style.transition = 'opacity 0.5s';
+                setTimeout(() => box.remove(), 500);
+            }, 3000);
+        }
+
+        document.addEventListener('contextmenu', e => { e.preventDefault(); showAntiCheatWarn('Context menu disabled.'); });
+        document.addEventListener('copy', e => { e.preventDefault(); showAntiCheatWarn('Clipboard access denied.'); });
+        document.addEventListener('cut', e => { e.preventDefault(); showAntiCheatWarn('Clipboard access denied.'); });
+        document.addEventListener('paste', e => { 
+            if(e.target.id !== 'flagInput' && e.target.id !== 'uaInput') {
+                e.preventDefault(); 
+                showAntiCheatWarn('Pasting disabled outside input fields.'); 
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && !isSolved) {
+                penaltyTimeMs += 60000; // 1 minute penalty
+                showAntiCheatWarn('TAB SWITCH DETECTED.<br>+60s PENALTY ADDED.');
+                document.getElementById('penaltyDisplay').textContent = `+${Math.floor(penaltyTimeMs/1000)}s PENALTY`;
+                document.getElementById('penaltyDisplay').classList.remove('hidden');
+            }
+        });
+        window.addEventListener('blur', () => {
+            if (!isSolved) {
+                penaltyTimeMs += 15000; // 15s penalty for losing focus (e.g. clicking another window)
+                showAntiCheatWarn('FOCUS LOST.<br>+15s PENALTY ADDED.');
+                document.getElementById('penaltyDisplay').textContent = `+${Math.floor(penaltyTimeMs/1000)}s PENALTY`;
+                document.getElementById('penaltyDisplay').classList.remove('hidden');
+            }
+        });
+        // --- END ANTI-CHEAT ---
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const challengeId = parseInt(urlParams.get('id'));
+
+        const chalData = {
+            1: {
+                title: 'The Inspector',
+                desc: 'The corporate login page seems to be blocking access. You don\'t need external tools. Right-click is disabled, but can you find a way to "Inspect" the page structure and elevate your role before submitting?',
+                html: `<div class="bg-nexus-black border border-nexus-grey p-6 rounded-lg max-w-sm">
+                        <h4 class="font-bold mb-4 text-nexus-white">Admin Portal Login</h4>
+                        <div class="mb-4">
+                            <label class="block text-xs text-nexus-lightGrey mb-1">Username</label>
+                            <input type="text" class="w-full bg-[#111] border border-[#333] rounded px-3 py-2 text-white outline-none">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-xs text-nexus-lightGrey mb-1">Password</label>
+                            <input type="password" class="w-full bg-[#111] border border-[#333] rounded px-3 py-2 text-white outline-none">
+                        </div>
+                        <!-- HIDDEN ROLE FIELD -->
+                        <input type="hidden" id="c1-role" value="guest">
+                        <button onclick="fetchChallenge1()" class="w-full btn-primary px-4 py-2 rounded font-bold text-sm">LOGIN</button>
+                       </div>
+                       <div id="c1-resp" class="mt-4 terminal-box hidden"></div>`
+            },
+            2: {
+                title: 'Shifted Perspective',
+                desc: 'An intercepted payload needs decoding. The encryption is weak—simply a "Caesar Shift" moving each letter 3 steps forward or backward in the alphabet (e.g., A becomes D or D becomes A). Decode it in your head or on paper.',
+                html: `<div class="bg-nexus-black border border-nexus-grey p-4 rounded-lg flex justify-center">
+                         <canvas id="canvas-c2" width="600" height="150" class="max-w-full rounded"></canvas>
+                       </div>`
+            },
+            3: {
+                title: 'The Logical Vault',
+                desc: 'A fragment of Javascript controls the vault. You don\'t need an IDE to solve this. Open your browser\'s Developer Console (F12 -> Console) or trace the math mentally.',
+                html: `<div class="bg-nexus-black border border-nexus-grey p-4 rounded-lg flex justify-center">
+                         <canvas id="canvas-c3" width="600" height="250" class="max-w-full rounded"></canvas>
+                       </div>`
+            },
+            4: {
+                title: 'The Endless Log',
+                desc: 'Our servers crashed, dumping thousands of lines of errors into the terminal below. Somewhere hidden in this mess is the flag. You cannot copy-paste the text, so you must rely on your skills to hunt it down.',
+                html: `<div class="terminal-box h-80 overflow-y-scroll text-xs p-4 leading-relaxed" id="c4-logbox">
+                         Generating logs...
+                       </div>`
+            }
+        };
+
+        if (!chalData[challengeId]) window.location.href = '/dashboard.html';
+
+        let startTime = null;
+        let timerInterval = null;
+
+        async function fetchChallenge1() {
+            const role = document.getElementById('c1-role').value;
+            try {
+                const res = await fetch('/api/challenge1-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role })
+                });
+                const data = await res.json();
+                const out = document.getElementById('c1-resp');
+                out.classList.remove('hidden');
+                if (res.ok) {
+                    out.innerHTML = `<span class="text-nexus-red font-bold">[ACCESS GRANTED]</span>\n${data.message}`;
+                } else {
+                    out.innerHTML = `<span class="text-nexus-purple font-bold">[DENIED]</span>\n${data.error}`;
+                }
+            } catch (e) {}
+        }
+
+        // Render Canvas Challenges
+        function renderCanvasC2() {
+            const canvas = document.getElementById('canvas-c2');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            
+            ctx.font = '28px "Fira Code", monospace';
+            ctx.fillStyle = '#8A2BE2';
+            ctx.fillText('IODJ{VKLIW_FLSKHU}', 100, 80); // Caesar +3 of FLAG{SHIFT_CIPHER}
+            
+            for(let i=0; i<100; i++) {
+                ctx.beginPath();
+                ctx.moveTo(Math.random()*canvas.width, Math.random()*canvas.height);
+                ctx.lineTo(Math.random()*canvas.width, Math.random()*canvas.height);
+                ctx.strokeStyle = Math.random() > 0.5 ? '#D2042D' : '#2a2a2a';
+                ctx.lineWidth = Math.random() * 2;
+                ctx.stroke();
+            }
+        }
+
+        function renderCanvasC3() {
+            const canvas = document.getElementById('canvas-c3');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+            
+            ctx.font = '18px "Fira Code", monospace';
+            ctx.fillStyle = '#a3a3a3';
+            const code = [
+                "function unlock() {",
+                "  let code = [8, 2, 5, 1];",
+                "  let res = [];",
+                "  for (let i = 0; i < code.length; i++) {",
+                "    res.push(code[i] ^ 3); // Bitwise XOR by 3",
+                "  }",
+                "  return res.join('');",
+                "}",
+                "// FLAG{RESULT}"
+            ];
+            
+            let y = 40;
+            code.forEach(line => {
+                ctx.fillText(line, 40, y);
+                y += 25;
+            });
+            
+            for(let i=0; i<40; i++) {
+                ctx.beginPath();
+                ctx.moveTo(Math.random()*canvas.width, Math.random()*canvas.height);
+                ctx.lineTo(Math.random()*canvas.width, Math.random()*canvas.height);
+                ctx.strokeStyle = 'rgba(138, 43, 226, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        function renderC4Logs() {
+            const logbox = document.getElementById('c4-logbox');
+            if(!logbox) return;
+            
+            let html = "";
+            for(let i=0; i<850; i++) {
+                html += `[0x${Math.floor(Math.random()*9999).toString(16).padStart(4,'0')}] SYS_WARN: Buffer overrun detected in module ${Math.floor(Math.random()*100)}<br>`;
+            }
+            html += `[0x4B1D] SYS_CRITICAL: Memory dump successful. Embedded key: FLAG{log_analysis_complete}<br>`;
+            for(let i=0; i<200; i++) {
+                html += `[0x${Math.floor(Math.random()*9999).toString(16).padStart(4,'0')}] SYS_INFO: Rebooting core sector ${Math.floor(Math.random()*10)}...<br>`;
+            }
+            logbox.innerHTML = html;
+        }
+
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hrs = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        async function init() {
+            document.getElementById('chalTitle').textContent = chalData[challengeId].title;
+            document.getElementById('chalDesc').innerHTML = chalData[challengeId].desc;
+            document.getElementById('chalInteraction').innerHTML = chalData[challengeId].html;
+
+            renderCanvasC2();
+            renderCanvasC3();
+            renderC4Logs();
+
+            try {
+                let token = localStorage.getItem('team_token');
+                const chalRes = await fetch('/api/challenges', {
+                    headers: token ? { 'Authorization': token } : {}
+                });
+                const chalList = await chalRes.json();
+                let status = chalList.challenges ? chalList.challenges.find(c => c.challenge_id === challengeId) : null;
+
+                if (!status) {
+                    const startRes = await fetch(`/api/start-challenge/${challengeId}`, { 
+                        method: 'POST',
+                        headers: token ? { 'Authorization': token } : {}
+                    });
+                    const startData = await startRes.json();
+                    startTime = startData.start_time;
+                    updateUIStatus('IN_PROGRESS');
+                } else {
+                    startTime = status.start_time;
+                    isSolved = status.solved;
+                    if (isSolved) {
+                        updateUIStatus('SOLVED', status.time_taken_ms);
+                    } else {
+                        updateUIStatus('IN_PROGRESS');
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function updateUIStatus(state, fixedTime = null) {
+            const statusBadge = document.getElementById('chalStatus');
+            const resetBtn = document.getElementById('resetChalBtn');
+            
+            if (state === 'SOLVED') {
+                statusBadge.textContent = 'SOLVED';
+                statusBadge.className = 'inline-block px-3 py-1 rounded text-xs font-bold tracking-widest bg-nexus-red/20 text-nexus-red border border-nexus-red/30';
+                document.getElementById('flagInput').disabled = true;
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('timerDisplay').textContent = formatTime(fixedTime);
+                document.getElementById('timerDisplay').classList.add('text-nexus-red');
+                document.getElementById('penaltyDisplay').classList.add('hidden');
+                resetBtn.classList.add('hidden');
+                if(timerInterval) clearInterval(timerInterval);
+            } else {
+                statusBadge.textContent = 'IN_PROGRESS';
+                statusBadge.className = 'inline-block px-3 py-1 rounded text-xs font-bold tracking-widest bg-nexus-purple/20 text-nexus-purple border border-nexus-purple/30';
+                resetBtn.classList.remove('hidden');
+                if(!timerInterval) {
+                    timerInterval = setInterval(() => {
+                        document.getElementById('timerDisplay').textContent = formatTime((Date.now() - startTime) + penaltyTimeMs);
+                    }, 1000);
+                }
+            }
+        }
+
+        document.getElementById('resetChalBtn').addEventListener('click', async () => {
+            if(!confirm("Resetting this challenge will restart your timer. Proceed?")) return;
+            let token = localStorage.getItem('team_token');
+            try {
+                const res = await fetch(`/api/reset-challenge/${challengeId}`, { 
+                    method: 'POST',
+                    headers: token ? { 'Authorization': token } : {}
+                });
+                if (res.ok) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    penaltyTimeMs = 0;
+                    document.getElementById('penaltyDisplay').classList.add('hidden');
+                    init(); 
+                }
+            } catch(e) { alert("Failed to reset timer."); }
+        });
+
+        document.getElementById('flagForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const flag = document.getElementById('flagInput').value.trim();
+            const resBox = document.getElementById('resultMsg');
+            let token = localStorage.getItem('team_token');
+            
+            try {
+                const res = await fetch(`/api/submit-flag/${challengeId}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? token : ''
+                    },
+                    body: JSON.stringify({ flag, penalty_ms: penaltyTimeMs })
+                });
+                const data = await res.json();
+                
+                resBox.classList.remove('hidden', 'bg-nexus-red/10', 'text-nexus-red', 'bg-[#1a3a25]', 'text-[#00ff41]');
+                if (res.ok) {
+                    resBox.innerHTML = `&#10004; DECRYPTION SUCCESSFUL. TIME LOGGED.`;
+                    resBox.classList.add('bg-[#1a3a25]', 'text-[#00ff41]', 'border', 'border-[#00ff41]/30');
+                    isSolved = true;
+                    updateUIStatus('SOLVED', data.time_taken_ms);
+                } else {
+                    resBox.innerHTML = `&#10006; ACCESS DENIED: ${data.error}`;
+                    resBox.classList.add('bg-nexus-red/10', 'text-nexus-red', 'border', 'border-nexus-red/30');
+                }
+            } catch (err) {
+                resBox.textContent = 'CONNECTION REFUSED';
+                resBox.classList.remove('hidden');
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
